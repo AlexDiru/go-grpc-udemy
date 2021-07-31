@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 
 	"github.com/AlexDiru/grpc-course/calculator/calculatorpb"
@@ -69,6 +70,38 @@ func (*server) ComputeAverage(stream calculatorpb.CalculatorService_ComputeAvera
 	}
 }
 
+func (*server) FindMaximum(stream calculatorpb.CalculatorService_FindMaximumServer) error {
+
+	max := int64(math.MinInt64)
+
+	for {
+		req, err := stream.Recv()
+
+		if err == io.EOF {
+			return nil
+		}
+
+		if err != nil {
+			log.Fatalf("Error while reading client stream: %v", err)
+			return err
+		}
+
+		if req.Value > max {
+			max = req.Value
+
+			sendErr := stream.Send(&calculatorpb.FindMaximumResponse{
+				Maximum: max,
+			})
+
+			if sendErr != nil {
+				log.Fatalf("Error while sending data to client: %v", sendErr)
+				return sendErr
+			}
+		}
+
+	}
+}
+
 func main() {
 	fmt.Println("Calculator Service")
 
@@ -76,6 +109,8 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to listen %v", err)
 	}
+
+	defer lis.Close()
 
 	grpcServer := grpc.NewServer()
 

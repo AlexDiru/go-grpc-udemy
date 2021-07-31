@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"time"
 
 	"github.com/AlexDiru/grpc-course/greet/greetpb"
 	"google.golang.org/grpc"
@@ -25,9 +26,8 @@ func main() {
 
 	// doUnary(client)
 	// doServerStreaming(client)
-	doClientStreaming(client)
-
-	fmt.Printf("Created client %f", client)
+	// doClientStreaming(client)
+	doBiDiStreaming(client)
 }
 
 func doUnary(client greetpb.GreetServiceClient) {
@@ -109,4 +109,74 @@ func doClientStreaming(client greetpb.GreetServiceClient) {
 	}
 
 	fmt.Printf("LongGreet response: %v\n", res)
+}
+
+func doBiDiStreaming(client greetpb.GreetServiceClient) {
+
+	stream, err := client.GreetEveryone(context.Background())
+
+	if err != nil {
+		log.Fatalf("Error while calling GreetEveryone: %v", err)
+		return
+	}
+
+	waitc := make(chan struct{})
+
+	requests := []*greetpb.GreetEveryoneRequest{
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Alex",
+				LastName:  "Spedding",
+			},
+		},
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "Tom",
+				LastName:  "Jones",
+			},
+		},
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "John",
+				LastName:  "Carmack",
+			},
+		},
+		{
+			Greeting: &greetpb.Greeting{
+				FirstName: "John",
+				LastName:  "Romero",
+			},
+		},
+	}
+
+	// Send
+	go func() {
+		defer stream.CloseSend()
+
+		for _, req := range requests {
+			fmt.Printf("Sending message %v\n", req)
+			stream.Send(req)
+			time.Sleep(1000 * time.Millisecond)
+		}
+	}()
+
+	go func() {
+		defer close(waitc)
+
+		for {
+			res, err := stream.Recv()
+
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				log.Fatalf("Error while reading GreetManyTimes stream: %v", err)
+				return
+			}
+
+			fmt.Printf("Received %v\n", res.Result)
+		}
+	}()
+
+	<-waitc
+
 }

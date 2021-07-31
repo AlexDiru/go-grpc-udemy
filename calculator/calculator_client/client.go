@@ -27,6 +27,7 @@ func main() {
 	doSum(client)
 	doPrimeNumberDecomposition(client)
 	doAverage(client)
+	doFindMaximum(client)
 
 	fmt.Printf("Created client %f", client)
 }
@@ -106,4 +107,67 @@ func doAverage(client calculatorpb.CalculatorServiceClient) {
 	}
 
 	fmt.Printf("ComputeAverage response: %v\n", res)
+}
+
+func doFindMaximum(client calculatorpb.CalculatorServiceClient) {
+
+	stream, err := client.FindMaximum(context.Background())
+
+	if err != nil {
+		log.Fatalf("Error while calling FindMaximum: %v", err)
+		return
+	}
+
+	waitc := make(chan struct{})
+
+	requests := []*calculatorpb.FindMaximumRequest{
+		{
+			Value: 1,
+		},
+		{
+			Value: 5,
+		},
+		{
+			Value: 3,
+		},
+		{
+			Value: 6,
+		},
+		{
+			Value: 2,
+		},
+		{
+			Value: 20,
+		},
+	}
+
+	// Send
+	go func() {
+		defer stream.CloseSend()
+
+		for _, req := range requests {
+			fmt.Printf("Sending message %v\n", req)
+			stream.Send(req)
+		}
+	}()
+
+	go func() {
+		defer close(waitc)
+
+		for {
+			res, err := stream.Recv()
+
+			if err == io.EOF {
+				return
+			} else if err != nil {
+				log.Fatalf("Error while reading FindMaximum stream: %v", err)
+				return
+			}
+
+			fmt.Printf("New Maximum found %v\n", res.Maximum)
+		}
+	}()
+
+	<-waitc
+
 }
