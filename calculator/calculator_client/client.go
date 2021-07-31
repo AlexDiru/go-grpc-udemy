@@ -26,6 +26,7 @@ func main() {
 
 	doSum(client)
 	doPrimeNumberDecomposition(client)
+	doAverage(client)
 
 	fmt.Printf("Created client %f", client)
 }
@@ -69,4 +70,40 @@ func doPrimeNumberDecomposition(client calculatorpb.CalculatorServiceClient) {
 		log.Printf("Response from PrimeNumberDecomposition: %v", msg.GetFactor())
 	}
 
+}
+
+func doAverage(client calculatorpb.CalculatorServiceClient) {
+
+	stream, err := client.ComputeAverage(context.Background())
+
+	if err != nil {
+		log.Fatalf("Error while calling ComputeAverage: %v", err)
+	}
+
+	requests := []*calculatorpb.ComputeAverageRequest{
+		{
+			Value: 1,
+		},
+		{
+			Value: 2,
+		},
+		{
+			Value: 3,
+		},
+		{
+			Value: 4,
+		},
+	}
+
+	for _, req := range requests {
+		stream.Send(req)
+	}
+
+	res, err := stream.CloseAndRecv()
+
+	if err != nil {
+		log.Fatalf("Error while receiving response from ComputeAverage: %v", err)
+	}
+
+	fmt.Printf("ComputeAverage response: %v\n", res)
 }
