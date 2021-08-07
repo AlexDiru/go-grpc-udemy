@@ -36,10 +36,21 @@ message FindMaximumResponse {
     int64 maximum = 1;
 }
 
+message SquareRootRequest {
+    float number = 1;
+}
+
+message SquareRootResponse {
+    float root = 1;
+}
+
 service CalculatorService{
     rpc Sum(SumRequest) returns (SumResponse) {};
     rpc PrimeNumberDecomposition(PrimeNumberDecompositionRequest) returns (stream PrimeNumberDecompositionResponse) {};
     rpc ComputeAverage(stream ComputeAverageRequest) returns (ComputeAverageResponse) {};
     rpc FindMaximum(stream FindMaximumRequest) returns (stream FindMaximumResponse) {};
+    
+    // This RPC will throw an exception if the sent number is negative of type INVALID_ARGUMENT
+    rpc SquareRoot(SquareRootRequest) returns (SquareRootResponse) {};
 }    
 

@@ -9,6 +9,8 @@ import (
 	"github.com/AlexDiru/grpc-course/calculator/calculatorpb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
@@ -28,6 +30,7 @@ func main() {
 	doPrimeNumberDecomposition(client)
 	doAverage(client)
 	doFindMaximum(client)
+	doSquareRootError(client)
 
 	fmt.Printf("Created client %f", client)
 }
@@ -170,4 +173,30 @@ func doFindMaximum(client calculatorpb.CalculatorServiceClient) {
 
 	<-waitc
 
+}
+
+func doSquareRootError(client calculatorpb.CalculatorServiceClient) {
+	res, err := client.SquareRoot(context.Background(), &calculatorpb.SquareRootRequest{
+		Number: -3,
+	})
+
+	if err != nil {
+		resErr, ok := status.FromError(err)
+
+		if ok {
+			// Actual error from gRPC
+			fmt.Println(resErr.Message())
+			fmt.Println(resErr.Code())
+
+			if resErr.Code() == codes.InvalidArgument {
+				fmt.Println("We probably sent a negative number")
+			}
+		} else {
+			log.Fatalf("Custom Error while calling SquareRoot: %v", err)
+		}
+
+		return
+	}
+
+	fmt.Printf("Square root response: %v\n", res)
 }
