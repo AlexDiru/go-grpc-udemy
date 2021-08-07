@@ -12,6 +12,9 @@ import (
 	"github.com/AlexDiru/grpc-course/greet/greetpb"
 
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
 type server struct {
@@ -101,6 +104,28 @@ func (*server) GreetEveryone(stream greetpb.GreetService_GreetEveryoneServer) er
 	}
 }
 
+func (*server) GreetWithDeadline(ctx context.Context, req *greetpb.GreetWithDeadlineRequest) (*greetpb.GreetWithDeadlineResponse, error) {
+	fmt.Println("GreetWithDeadline function was invoked")
+
+	for i := 0; i < 3; i++ {
+		if ctx.Err() == context.Canceled {
+			fmt.Println("The client cancelled the request")
+			return nil, status.Error(codes.DeadlineExceeded, "The client cancelled the request")
+		}
+		time.Sleep(time.Second * 1)
+	}
+
+	firstName := req.GetGreeting().FirstName
+
+	result := "Hello " + firstName
+
+	res := &greetpb.GreetWithDeadlineResponse{
+		Result: result,
+	}
+
+	return res, nil
+}
+
 func main() {
 	fmt.Println("Hello")
 
@@ -112,7 +137,15 @@ func main() {
 
 	defer lis.Close()
 
-	grpcServer := grpc.NewServer()
+	certFile := "ssl/server.crt"
+	keyFile := "ssl/server.pem"
+	creds, sslErr := credentials.NewServerTLSFromFile(certFile, keyFile)
+
+	if sslErr != nil {
+		log.Fatalf("Fatal error loading SSL certs")
+	}
+
+	grpcServer := grpc.NewServer(grpc.Creds(creds))
 
 	greetpb.RegisterGreetServiceServer(grpcServer, &server{})
 

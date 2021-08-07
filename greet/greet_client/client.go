@@ -9,12 +9,23 @@ import (
 
 	"github.com/AlexDiru/grpc-course/greet/greetpb"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/credentials"
+	"google.golang.org/grpc/status"
 )
 
 func main() {
 	fmt.Println("Client started")
 
-	conn, err := grpc.Dial("localhost:50051", grpc.WithInsecure())
+	certFile := "ssl/ca.crt"
+	creds, sslErr := credentials.NewClientTLSFromFile(certFile, "")
+
+	if sslErr != nil {
+		log.Fatalf("Fatal error loading CA trust certs")
+	}
+
+	opts := grpc.WithTransportCredentials(creds)
+	conn, err := grpc.Dial("localhost:50051", opts)
 
 	if err != nil {
 		log.Fatalf("Could not connect: %v", err)
@@ -24,10 +35,12 @@ func main() {
 
 	client := greetpb.NewGreetServiceClient(conn)
 
-	// doUnary(client)
+	doUnary(client)
 	// doServerStreaming(client)
 	// doClientStreaming(client)
-	doBiDiStreaming(client)
+	// doBiDiStreaming(client)
+	// doUnaryWithDeadline(client, 1*time.Second)
+	// doUnaryWithDeadline(client, 5*time.Second)
 }
 
 func doUnary(client greetpb.GreetServiceClient) {
@@ -179,4 +192,38 @@ func doBiDiStreaming(client greetpb.GreetServiceClient) {
 
 	<-waitc
 
+}
+
+func doUnaryWithDeadline(client greetpb.GreetServiceClient, timeout time.Duration) {
+	req := &greetpb.GreetWithDeadlineRequest{
+		Greeting: &greetpb.Greeting{
+			FirstName: "Alex",
+			LastName:  "Spedding",
+		},
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+
+	defer cancel()
+
+	res, err := client.GreetWithDeadline(ctx, req)
+
+	if err != nil {
+		statusErr, ok := status.FromError(err)
+
+		if ok {
+			if statusErr.Code() == codes.DeadlineExceeded {
+				fmt.Println("Timeout was hit! Deadline exceeded")
+			} else {
+				fmt.Printf("Unexpected error %v", statusErr)
+			}
+
+			return
+		}
+
+		log.Fatalf("Error while calling GreetWithDeadline: %v", err)
+		return
+	}
+
+	log.Printf("Response from GreetWithDeadline: %v", res)
 }
