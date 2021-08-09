@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"io"
 	"log"
 
 	"github.com/AlexDiru/grpc-course/blog/blogpb"
@@ -52,6 +53,28 @@ func main() {
 
 	UpdateBlog(client, newBlog)
 
+	stream, err := client.ListBlog(context.Background(), &blogpb.ListBlogRequest{})
+
+	if err != nil {
+		log.Fatalf("Error while calling ListBlog RPC: %v", err)
+	}
+
+	fmt.Println("Listing blogs")
+	for {
+		res, err := stream.Recv()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			log.Fatalf("Something happened: %v", err)
+		}
+
+		fmt.Println(res.GetBlog())
+	}
+
+	DeleteBlog(client, blogId)
+	ReadBlog(client, blogId)
+
 }
 
 func UpdateBlog(client blogpb.BlogServiceClient, blog *blogpb.Blog) {
@@ -82,4 +105,16 @@ func ReadBlog(client blogpb.BlogServiceClient, blogId string) *blogpb.Blog {
 	fmt.Printf("Blog has been read:\n\t%v\n", readBlogRes)
 
 	return readBlogRes.GetBlog()
+}
+
+func DeleteBlog(client blogpb.BlogServiceClient, blogId string) {
+	deleteBlogRes, err := client.DeleteBlog(context.Background(), &blogpb.DeleteBlogRequest{
+		BlogId: blogId,
+	})
+
+	if err != nil {
+		fmt.Printf("Error happened while deleting: \n\t%v\n", err)
+	}
+
+	fmt.Printf("Blog has been deleted:\n\t%v\n", deleteBlogRes)
 }
