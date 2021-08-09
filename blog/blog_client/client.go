@@ -38,21 +38,48 @@ func main() {
 	fmt.Printf("Blog has been created \n\t%v\n", createBlogRes)
 
 	// Read blog
-	_, err2 := client.ReadBlog(context.Background(), &blogpb.ReadBlogRequest{
-		BlogId: "frijirgnw",
-	})
+	blogId := createBlogRes.GetBlog().GetId()
+	ReadBlog(client, "frijirgnw")
+	ReadBlog(client, blogId)
 
-	if err2 != nil {
-		fmt.Printf("Error happened while reading: \n\t%v\n", err2)
+	// Update blog
+	newBlog := &blogpb.Blog{
+		Id:       blogId,
+		AuthorId: "Alex (Edited)",
+		Title:    "My first blog (Edited)",
+		Content:  "Content of my first blog (Edited)",
 	}
 
-	readBlogRes, err3 := client.ReadBlog(context.Background(), &blogpb.ReadBlogRequest{
-		BlogId: createBlogRes.GetBlog().GetId(),
+	UpdateBlog(client, newBlog)
+
+}
+
+func UpdateBlog(client blogpb.BlogServiceClient, blog *blogpb.Blog) {
+
+	req := &blogpb.UpdateBlogRequest{
+		Blog: blog,
+	}
+
+	updateRes, err := client.UpdateBlog(context.Background(), req)
+
+	if err != nil {
+		fmt.Printf("Error happened while updating: \n\t%v\n", err)
+	}
+
+	fmt.Printf("Blog was updated:\n\t%v\n", updateRes.GetBlog())
+
+}
+
+func ReadBlog(client blogpb.BlogServiceClient, blogId string) *blogpb.Blog {
+	readBlogRes, err := client.ReadBlog(context.Background(), &blogpb.ReadBlogRequest{
+		BlogId: blogId,
 	})
 
-	if err3 != nil {
-		fmt.Printf("Error happened while reading: \n\t%v\n", err3)
+	if err != nil {
+		fmt.Printf("Error happened while reading: \n\t%v\n", err)
 	}
 
 	fmt.Printf("Blog has been read:\n\t%v\n", readBlogRes)
+
+	return readBlogRes.GetBlog()
 }
